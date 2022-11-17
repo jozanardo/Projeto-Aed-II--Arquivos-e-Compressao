@@ -1,6 +1,8 @@
 import heapq
 import os
 import cv2
+from collections import OrderedDict
+from collections import Counter
 
 """
 author: Bhrigu Srivastava
@@ -76,21 +78,20 @@ class HuffmanCoding:
         current_code = ""
         self.make_codes_helper(root, current_code)
 
-    def get_encoded_text(self, text):
+    def get_encoded_text(self, teste):
         encoded_text = ""
-        print(text)
-        for character in text:
+        for character in teste:
             encoded_text += self.codes[str(character)]
         return encoded_text
 
-    def pad_encoded_text(self, encoded_text):
-        extra_padding = 8 - len(encoded_text) % 8
+    def pad_encoded_bits(self, encoded_bits):
+        extra_padding = 8 - len(encoded_bits) % 8
         for i in range(extra_padding):
-            encoded_text += "0"
+            encoded_bits += "0"
 
         padded_info = "{0:08b}".format(extra_padding)
-        encoded_text = padded_info + encoded_text
-        return encoded_text
+        encoded_bits = padded_info + encoded_bits
+        return encoded_bits
 
     def get_byte_array(self, padded_encoded_text):
         if (len(padded_encoded_text) % 8 != 0):
@@ -116,24 +117,48 @@ class HuffmanCoding:
 
     def compress(self):
         filename, file_extension = os.path.splitext(self.path)
-        output_path = filename + ".bin"
+        output_path = filename + "2.bin"
         cap = cv2.VideoCapture('test.mp4')
+        #cap = cv2.VideoCapture('https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_10MB.mp4')
+        gray = []
+        frames = []
 
         with open(self.path, 'r+') as file, open(output_path, 'wb') as output:
-            text = cap.read()
-            text = text[1]
+            while (cap.isOpened()):
+                ret, frame = cap.read()
 
-            frequency = self.CountFrequency(text[1])
-            # frequency = self.make_frequency_dict(text[1])
-            print(frequency)
-            self.make_heap(frequency)
+                if ret == True:
+                    frames.append(frame)
+                    #converte os frames em tons e cinza
+                    gray.append(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+                    #break esta aqui só para pegar primeiro frame, retirar
+                    break
+                else:
+                    break
+
+            for i in  range(len(gray)):
+                dicionario = dict(sum(map(Counter, gray[i]), Counter()))
+
+
+            #ordena o dicionario de acordo da menor frequencia para maior
+            #dicionario = OrderedDict(sorted(dicionario.items(), key=lambda x: x[1]))
+
+            self.make_heap(dicionario)
             self.merge_nodes()
             self.make_codes()
 
-            encoded_text = self.get_encoded_text(text)
-            padded_encoded_text = self.pad_encoded_text(encoded_text)
+            bits=""
 
-            b = self.get_byte_array(padded_encoded_text)
+            #percorre todos valores de cinza e converter os mesmos para bits
+            for x in gray:
+                for y in x:
+                    for z in y:
+                        bits += self.codes[z]
+
+
+            padded_encoded_bits = self.pad_encoded_bits(bits)
+
+            b = self.get_byte_array(padded_encoded_bits)
             output.write(bytes(b))
 
         print("Compressed")
@@ -165,7 +190,7 @@ class HuffmanCoding:
 
     def decompress(self, input_path):
         filename, file_extension = os.path.splitext(self.path)
-        output_path = filename + "_decompressed" + ".txt"
+        output_path = filename + "_decompressed" + ".png"
 
         with open(input_path, 'rb') as file, open(output_path, 'w') as output:
             bit_string = ""
