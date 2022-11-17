@@ -115,7 +115,7 @@ class Image:
         while 1:
             c1 = workspace[0]
             c2 = workspace[1]
-            print(c2)
+            
             workspace.pop(0)
             workspace.pop(0)
 
